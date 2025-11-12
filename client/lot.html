@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>{{ lot }} - Live Parking View</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+</head>
+<body>
+  <div class="sidebar">
+    <h2>Parking Lots</h2>
+    <ul>
+      <li><a href="{{ url_for('home') }}">🏠 Home</a></li>
+      <li><a href="{{ url_for('lot_view', lot_name='Lot1') }}">Lot1</a></li>
+      <li><a href="{{ url_for('lot_view', lot_name='Lot2') }}">Lot2</a></li>
+      <li><a href="{{ url_for('lot_view', lot_name='Lot3') }}">Lot3</a></li>
+    </ul>
+  </div>
+
+  <div class="main">
+    <h1>{{ lot }} — Live View</h1>
+
+    <div class="live-grid">
+      <div class="live-video">
+        <img src="{{ stream_url }}" width="960" alt="Live stream" />
+      </div>
+
+      <div class="live-stats">
+        <div class="stat"><span>Total</span><strong id="total">—</strong></div>
+        <div class="stat"><span>Occupied</span><strong id="occ">—</strong></div>
+        <div class="stat"><span>Free</span><strong id="free">—</strong></div>
+        <div class="stat small"><span>Updated</span><strong id="updated">—</strong></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    async function refreshLot() {
+      try {
+        const res = await fetch("{{ url_for('api_stats') }}");
+        const data = await res.json();
+        const s = data["{{ lot }}"];
+        if (!s) return;
+
+        document.getElementById("total").textContent = s.total;
+        document.getElementById("occ").textContent = s.occupied;
+        document.getElementById("free").textContent = s.free;
+        document.getElementById("updated").textContent = new Date(s.updated_at).toLocaleTimeString();
+      } catch (e) {
+        console.error(e);
+      }
+    }
+    refreshLot();
+    setInterval(refreshLot, 1500);
+  </script>
+</body>
+</html>

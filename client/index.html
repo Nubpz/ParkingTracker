@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Smart Parking Dashboard</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+</head>
+<body>
+  <div class="sidebar">
+    <h2>Parking Lots</h2>
+    <ul>
+      {% for lot in lots %}
+        <li><a href="{{ lot_links[lot] }}">{{ lot }}</a></li>
+      {% endfor %}
+    </ul>
+  </div>
+
+  <div class="main">
+    <h1>Campus Parking Overview</h1>
+    <div id="cards" class="cards"></div>
+  </div>
+
+  <script>
+    let firstRun = true;
+    let cardRefs = {};
+
+    async function loadStats() {
+      try {
+        const res = await fetch("{{ url_for('api_stats') }}");
+        const data = await res.json();
+        const cards = document.getElementById("cards");
+
+        // FIRST time → create all cards once
+        if (firstRun) {
+          for (const [lot, stats] of Object.entries(data)) {
+            const card = document.createElement("div");
+            card.className = "card";
+            card.innerHTML = `
+              <div class="card-header">
+                <h3>${lot}</h3>
+                <span class="badge"></span>
+              </div>
+              <div class="card-body">
+                <div class="row">
+                  <div><strong>Total:</strong> <span class="total"></span></div>
+                  <div><strong>Occupied:</strong> <span class="occ"></span></div>
+                  <div><strong>Free:</strong> <span class="free"></span></div>
+                </div>
+                <div class="progress">
+                  <div class="progress-bar"></div>
+                </div>
+                <div class="updated"></div>
+              </div>
+              <div class="card-footer">
+                <a class="btn" href="/lot/${lot}">Open Live View</a>
+              </div>
+            `;
+            cards.appendChild(card);
+            cardRefs[lot] = card;
+          }
+          firstRun = false;
+        }
+
+        // UPDATE → no re-render
+        for (const [lot, stats] of Object.entries(data)) {
+          const card = cardRefs[lot];
+          const occPct = stats.total ? Math.round((stats.occupied / stats.total) * 100) : 0;
+
+          const status = occPct >= 90 ? "Full"
+                        : occPct >= 70 ? "Busy"
+                        : "Easy";
+          const badgeClass = occPct>=90?"red":occPct>=70?"orange":"green";
+
+          card.querySelector(".badge").textContent = status;
+          card.querySelector(".badge").className = "badge " + badgeClass;
+
+          card.querySelector(".total").textContent = stats.total;
+          card.querySelector(".occ").textContent = stats.occupied;
+          card.querySelector(".free").textContent = stats.free;
+          card.querySelector(".progress-bar").style.width = occPct + "%";
+          card.querySelector(".updated").textContent =
+            "Updated: " + new Date(stats.updated_at).toLocaleTimeString();
+        }
+
+      } catch (e) {
+        console.error(e);
+      }
+    }
+
+    loadStats();
+    setInterval(loadStats, 2000);
+  </script>
+</body>
+</html>
